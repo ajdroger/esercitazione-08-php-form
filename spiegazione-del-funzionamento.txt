@@ -1,0 +1,13 @@
+A[Browser richiede URL] --> B[Web Server Apache/Nginx]
+    B --> C[index.php - Front Controller]
+    C --> D[Carica Autoloader Composer]
+    D --> E[Crea istanza App]
+    E --> F[Crea oggetto Request dai dati HTTP]
+    F --> G[App->handle chiama il Router]
+    G --> H{Route trovata?}
+    H -->|Sì| I[Esegue il Controller]
+    H -->|No| J[Risposta 404]
+    I --> K[Controller genera View/Template]
+    K --> L[Crea oggetto Response]
+    L --> M[Response->send invia HTML al browser]
+    M --> N[Browser renderizza HTML]

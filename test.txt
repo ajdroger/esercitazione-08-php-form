@@ -1,0 +1,99 @@
+A) Routing e comportamento dell’App (src/App.php)
+1.	GET /
+•	Deve invocare il controller “showForm” (verifica indiretta: risposta 200 e contiene <form).
+•	Status atteso: 200.
+2.	POST /submit
+•	Deve invocare “handleSubmit” (verifica indiretta: dipende dai dati).
+3.	Qualsiasi altra rotta (es. GET /nope)
+•	Deve restituire 404.
+•	Body deve contenere un marker (es. 404 Not Found).
+Casi limite:
+•	REQUEST_URI con querystring: /??x=1 deve comunque risolvere path /.
+•	REQUEST_URI mancante o vuoto → default /.
+
+B) Request parsing (src/Http/Request.php)
+1.	method()
+•	Con REQUEST_METHOD=GET → "GET".
+•	Con REQUEST_METHOD=post → "POST" (uppercase).
+•	Se mancante → default "GET".
+2.	path()
+•	Deve estrarre solo il path da URI completi: /submit?x=1 → /submit.
+•	Se parse fallisce → default /.
+3.	post()
+•	Deve restituire l’array post passato al costruttore, senza mutazioni.
+
+C) Response (src/Http/Response.php)
+1.	Response::html($html)
+•	Header Content-Type deve essere text/html; charset=UTF-8.
+•	Status default 200.
+•	body() deve essere esattamente l’HTML passato.
+2.	headers()
+•	Deve includere i header configurati.
+3.	status()
+•	Deve riflettere lo status passato.
+4.	(Opzionale) send()
+•	Non è necessario testarlo (difficile senza output buffering + header mocking). Va bene dichiarare fuori scopo.
+
+D) Validazione e sanitizzazione (src/Validation/ContactFormValidator.php)
+Regole di validazione
+1.	name
+•	Obbligatorio.
+•	Minimo 2 caratteri dopo trim.
+2.	email
+•	Obbligatoria.
+•	Deve rispettare FILTER_VALIDATE_EMAIL.
+3.	message
+•	Obbligatorio.
+•	Minimo 10 caratteri dopo trim.
+Aspettative sui risultati
+4.	Output sempre nella forma:
+•	['data' => ['name'=>..., 'email'=>..., 'message'=>...], 'errors' => [...]]
+5.	data deve sempre contenere le 3 chiavi (anche quando ci sono errori).
+6.	errors deve contenere chiavi solo per campi invalidi e messaggi coerenti (stringhe non vuote).
+Sanitizzazione (stripTagsAndNormalize)
+7.	Deve rimuovere HTML (es. <b>Mario</b> → Mario).
+8.	Deve normalizzare spazi multipli (es. "Ciao mondo" → "Ciao mondo").
+9.	Deve fare trim (spazi iniziali/finali rimossi).
+Casi limite “sporchi”
+10.	Input mancanti (nessuna chiave) → 3 errori.
+11.	Input non-stringa (es. array in name) → cast a string, non deve crashare.
+12.	Caratteri Unicode (accenti) → non deve corrompere il testo.
+
+E) Controller (src/Controller/FormController.php)
+showForm()
+1.	Risposta:
+•	Status 200.
+•	Contiene <form e action="/submit".
+•	Contiene i campi name, email, message.
+2.	I valori “old” iniziali sono vuoti (value "", textarea vuota).
+handleSubmit(): gestione errori (422)
+3.	Con input invalido:
+•	Status 422.
+•	Titolo pagina: “Correggi gli errori”.
+•	Mostra almeno un messaggio di errore atteso.
+4.	Preserva i dati inseriti (old):
+•	Se l’utente sbaglia email, il campo name e message devono restare valorizzati (in forma sanitizzata).
+5.	Escape HTML nell’old
+•	Se name include <script>, nel body deve apparire escaped (es. &lt;script&gt;) e non eseguibile (test su string matching).
+handleSubmit(): successo (200)
+6.	Con input valido:
+•	Status 200.
+•	Contiene “Grazie” e il nome.
+•	Contiene link “Torna alla form”.
+7.	Escape nome in pagina di successo
+•	Con name="<b>Mario</b>" deve apparire escaped, non markup HTML renderizzato.
+Casi limite endpoint
+8.	Input extra (es. foo=bar) non deve influenzare il risultato.
+9.	Message con newline e spazi → deve passare se ≥ 10 caratteri dopo trim.
+
+F) “Contratti” e qualità dei test (linee guida pratiche)
+•	Separare test in:
+•	Unit test per ContactFormValidator, Request, Response
+•	Controller test come “integration leggeri” (controller + validator reali)
+•	App test per routing (App + controller reale, oppure stubbing se sanno farlo)
+•	Usare data provider per validazione (molti casi con meno codice).
+•	Evitare assert fragili su HTML completo: meglio cercare frammenti significativi.
+•	Puntare a copertura:
+•	rami if (404 vs rotte note, 422 vs 200)
+•	casi limite (input mancanti, trimming, escaping)
+
