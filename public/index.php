@@ -10,5 +10,5 @@ $app = new App();
 $request = Request::fromGlobals();
 //print_r($request);
 $response = $app->handle($request);
-print_r($response);
+//print_r($response);
 $response->send();
